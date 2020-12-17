@@ -1,9 +1,9 @@
 import os
 
 import telebot, time
-from messages import hello_message
+from messages import hello_message, temp_message
 from flask import Flask, request
-from button import main_markup
+from button import main_markup, city_choice
 
 import config
 from services import get_weather
@@ -22,21 +22,28 @@ def receive_update():
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-	bot.send_message(message.chat.id,hello_message(message.from_user.username),reply_markup=main_markup)
+    
+	bot.send_message(message.chat.id, hello_message(message.from_user.username), reply_markup=main_markup)
    
 @bot.message_handler(content_types=["text"])
 def repeat_all_messages(message):
     if message.text == 'Погода на сегодня':
-        tconv = lambda x: time.strftime("%H:%M:%S %d.%m.%Y", time.localtime(x)) #Конвертация даты в читабельный вид
-        s = get_weather()
-        description = s['description']
-        humidity = s['humidity']
-        feels_like = s['feels_like']
-        temp = s['temp']
-        bot.send_message(message.chat.id,text = f"Temperature in Bishkek for {tconv(message.date)}\nTemperature : {temp}\nFeels like : {feels_like}\nHumidity : {humidity}\nDescription : {description} " )
+        bot.send_message(message.chat.id, 'Выбери город', reply_markup=city_choice)
+        
     else:
         bot.send_message(message.chat.id, message.text)
 
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_inline(call):
+    try:
+        if call.message:
+            bot.send_message(call.message.chat.id, temp_message(call.data) )
+
+           
+ 
+    except Exception as e:
+        print(repr(e))
 
 @server.route('/' + config.token, methods=['POST'])
 def getMessage():
@@ -47,7 +54,7 @@ def getMessage():
 @server.route("/")
 def webhook():
     bot.remove_webhook()
-    s = bot.set_webhook(url='https://c71070778b9d.ngrok.io' + config.token)
+    s = bot.set_webhook(url='https://22805ac065c3.ngrok.io' + config.token)
     if s:
         return print("webhook setup ok")
     else:
